@@ -1,0 +1,76 @@
+include:
+  - local: '/templates/java/default.yaml'
+
+################# Anchors for reusing ################## 
+.service_kafka: &service_kafka
+  - name: bitnami/kafka:3.1
+    alias: kafka
+    variables:
+      KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_BROKER_ID: "1"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+
+.service_minio: &service_minio
+  - name: bitnami/minio:2022.6.10
+    alias: minio
+    variables:
+      MINIO_ROOT_USER: "minioadmin"
+      MINIO_ROOT_PASSWORD: "minioadmin"
+  - name: bitnami/minio-client:2022.6.10
+    variables:
+      MINIO_SERVER_HOST: "minio"
+      MINIO_SERVER_ACCESS_KEY: "minioadmin"
+      MINIO_SERVER_SECRET_KEY: "minioadmin"
+    command:
+      - "mb file-storage"
+
+.service_postgresql: &service_postgresql
+  - name: postgres:14.1-alpine
+    alias: postgres
+    variables:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+
+.service_mongodb: &service_mongodb
+  - name: registry.gitlab.com/my-custom-mongodb-image:main-ae193915 # with replica set
+    alias: mongodb
+    variables:
+      MONGO_INITDB_ROOT_USERNAME: mongoadmin
+      MONGO_INITDB_ROOT_PASSWORD: mongoadmin
+      MONGO_INITDB_DATABASE: test
+
+################# Templates ###########
+.test11_kafka_mongo:
+  extends: .default_test
+  services:
+    - *service_kafka
+    - *service_mongodb
+  variables:
+    spring_data_mongodb_uri: "mongodb://test:test@mongodb/test"
+    spring_kafka_consumer_bootstrap_servers: kafka:9092
+    spring_kafka_producer_bootstrap_servers: kafka:9092
+
+.test11_java-11-app-2:
+  extends: .default_test
+  services:
+    - *service_kafka
+    - *service_minio
+    - *service_postgresql
+  variables:
+    spring_kafka_consumer_bootstrap_servers: "kafka:9092"
+    spring_kafka_producer_bootstrap_servers: "kafka:9092"
+    spring_data_r2dbc_url: "postgresql://postgres:5432/postgres"
+    spring_data_r2dbc_user: "postgres"
+    spring_data_r2dbc_password: "postgres"
+    s3_url: "http://minio:9000/file-storage"
+    s3_fileBucket: "file-storage"
+    s3_imageBucket: "file-storage"
+    s3_accessKey: "minioadmin"
+    s3_secretKey: "minioadmin"
+    s3_region: "temp"

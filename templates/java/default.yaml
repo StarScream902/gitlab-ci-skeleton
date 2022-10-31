@@ -1,0 +1,26 @@
+---
+default:
+  before_script:
+    - echo "gitLabTokenName=Job-Token" > ~/.gradle/gradle.properties
+    - echo "gitLabTokenValue=${CI_JOB_TOKEN}" >> ~/.gradle/gradle.properties
+
+.default_build:
+  stage: build
+  image: gradle:jdk$JAVA_VERSION
+  script:
+    - echo "build java$JAVA_VERSION $CI_PROJECT_NAME"
+    - gradle cleanBuild --no-daemon --stacktrace -x test
+    - ls -la build/libs/
+  artifacts:
+    public: false
+    name: "build artifacts"
+    paths:
+    - build/libs/
+    expire_in: 1 day
+
+.default_test:
+  stage: test
+  dependencies: [ build ]
+  needs: ["build"]
+  image: gradle:jdk$JAVA_VERSION
+  script: gradle test --no-daemon --stacktrace -i

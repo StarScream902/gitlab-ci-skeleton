@@ -1,0 +1,28 @@
+include:
+  - local: '/templates/node/16.yaml'
+  - local: '/templates/build_docker/default.yaml'
+  - local: '/templates/deploy/deploy_default.yaml'
+
+stages:
+  # - download_deps
+  - build
+  - test
+  - build_docker
+  - deploy
+
+# download_deps:
+#   extends: .download_deps14
+
+build:
+  extends: .build16
+
+test:
+  extends: .test16
+  except:
+    variables:
+      - $SKIP_TESTS != "false"
+
+build_docker:
+  extends: .default_build_docker
+
+# deploy is there /templates/deploy/deploy_default.yaml

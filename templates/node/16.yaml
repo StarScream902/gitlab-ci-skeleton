@@ -1,0 +1,29 @@
+.build16:
+  stage: build
+  image: node:16
+  variables:
+    REACT_APP_API_BASE_URL: "APP_API_BASE_URL"
+    REACT_APP_WEBSOCKET_API_BASE_URL: "APP_WEBSOCKET_API_BASE_URL"
+    # NODE_ENV: "production"
+  script:
+    - echo "build node16 $CI_PROJECT_NAME"
+    - npm ci --legacy-peer-deps
+    - export NODE_ENV=production
+    - CI=false && npm run build
+    - ls -la build/
+  artifacts:
+    public: false
+    name: "build artifacts"
+    paths:
+    - build/
+    expire_in: 1 day
+
+.test16:
+  stage: test
+  dependencies: [ build ]
+  image: node:16
+  script:
+    - export react_scripts_version=$(node -pe "require('./package').dependencies['react-scripts']")
+    - echo $react_scripts_version
+    - npm install --legacy-peer-deps react-scripts@$react_scripts_version
+    - npm run test

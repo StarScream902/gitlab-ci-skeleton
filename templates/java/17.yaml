@@ -1,0 +1,50 @@
+include:
+  - local: '/templates/java/default.yaml'
+
+################# Anchors for reusing ################## 
+.svc_mongodb: &svc_mongodb
+  - name: registry.gitlab.com/my-custom-mongodb-image:main-ae193915 # with replica set
+    alias: mongodb
+    variables:
+      MONGO_INITDB_ROOT_USERNAME: mongoadmin
+      MONGO_INITDB_ROOT_PASSWORD: mongoadmin
+      MONGO_INITDB_DATABASE: test
+
+################# Templates ###########
+.test17_java-17-app-2:
+  extends: .default_test
+  services:
+    - *svc_mongodb
+  variables:
+    spring_data_mongodb_uri: "mongodb://test:test@mongodb/test"
+
+.test17_java-17-app-1:
+  extends: .default_test
+  services:
+    - *svc_mongodb
+  variables:
+    spring_data_mongodb_uri: "mongodb://test:test@mongodb/test"
+    auth_jwt_access_token_public_key_file: public_key.crt
+    auth_jwt_access_token_private_key_file: private_key.key
+  before_script:
+    - echo "gitLabTokenName=Job-Token" > ~/.gradle/gradle.properties
+    - echo "gitLabTokenValue=${CI_JOB_TOKEN}" >> ~/.gradle/gradle.properties
+    - export auth_jwt_refresh_token_secret=`openssl rand -base64 32`
+    - openssl genrsa -out keypair.pem 2048
+    - openssl rsa -in keypair.pem -pubout -out public_key.crt
+    - openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in keypair.pem -out private_key.key
+
+.test17_java-17-app-3:
+  extends: .default_test
+  services:
+    - postgres:12.2-alpine
+  variables:
+    GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+    POSTGRES_DB: postgresql
+    POSTGRES_USER: postgresql
+    POSTGRES_PASSWORD: postgresql
+    spring_data_r2dbc_host: postgres
+    spring_data_r2dbc_port: 5432
+    spring_data_r2dbc_db: postgres
+    spring_data_r2dbc_user: postgres
+    spring_data_r2dbc_password: postgres

@@ -1,0 +1,18 @@
+.build3.8:
+  stage: build
+  image: python:3.8-slim
+  script:
+    - echo "build python3.8 $CI_PROJECT_NAME"
+  # artifacts:
+  #   public: false
+  #   name: "build artifacts"
+  #   paths:
+  #   - build/
+  #   expire_in: 1 day
+
+.test3.8:
+  stage: test
+  dependencies: [ build ]
+  image: python:3.8-slim
+  script:
+    - echo "tests"

@@ -1,0 +1,31 @@
+---
+workflow: # when a pipeline will be run
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /(master|main|develop|release\/.*)/' 
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      when: never  # Prevent pipeline run for push event
+    - when: always # Run pipeline for all other cases
+
+variables:
+  DOCKER_IMAGE_TAG: ${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA} # template of docker image tag
+
+include:
+  # entrypoint for the 11 JAVA services
+  - local: '/pipelines/java/11.yaml'
+    rules:
+      - if: $CI_PROJECT_NAME == "java-11-app-1"
+      - if: $CI_PROJECT_NAME == "java-11-app-2"
+  # entrypoint for the 17 JAVA services
+  - local: '/pipelines/java/17.yaml'
+    rules:
+      - if: $CI_PROJECT_NAME == "java-17-app-1"
+      - if: $CI_PROJECT_NAME == "java-17-app-2"
+      - if: $CI_PROJECT_NAME == "java-17-app-3"
+  # entrypoint for the 14 node services
+  - local: '/pipelines/node/16.yaml'
+    rules:
+      - if: $CI_PROJECT_NAME == "node-16-app"
+  # entrypoint for the Python 3.8 services
+  - local: '/pipelines/python/3.8.yaml'
+    rules:
+      - if: $CI_PROJECT_NAME == "python-38-app"

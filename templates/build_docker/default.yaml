@@ -1,0 +1,21 @@
+---
+.default_build_docker:
+  stage: build_docker
+  dependencies: [ build ]
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /(master|main|develop|release\/.*)/'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      when: never
+    - when: manual
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [ "" ]
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - |
+      echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(echo -n ${CI_REGISTRY_USER}:${CI_REGISTRY_PASSWORD} | base64)\"}}}" \
+      > /kaniko/.docker/config.json
+  script:
+    - export IMAGE=${CI_REGISTRY_IMAGE}:${DOCKER_IMAGE_TAG}
+    - /kaniko/executor --context ${CI_PROJECT_DIR} --dockerfile ${CI_PROJECT_DIR}/Dockerfile --destination $IMAGE

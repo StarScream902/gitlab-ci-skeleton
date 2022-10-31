@@ -1,0 +1,95 @@
+---
+# for finding:
+# K8S_CONFIG_FILE and K8S_SECRETS_FILE
+# see there https://gitlab.com/groups/you_group/-/settings/ci_cd
+
+.default_deploy:
+  stage: deploy
+  image:
+    name: my-custom-docker-image:main-3838ba26 # with python, boto3 and enother stuff for the getting secrets from the aws parameter store
+    entrypoint: [ "" ]
+  allow_failure: false
+  needs: ["build_docker"]
+  before_script:
+    - cp $PWD.tmp/${get_parameters_creds} ~/.aws/credentials
+    - git clone --branch=${DEFAULT_CHARTS_REPO_REF} https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/repo-of-my-helm-charts.git ./helm
+    - AWS_PROFILE=aws_get_param python3 ./helm/get-parameters.py /${env_name_short}/${CI_PROJECT_NAME}
+  script:
+    - |
+      command="helm upgrade --install \
+        --kubeconfig $PWD.tmp/${K8S_CONFIG_FILE} \
+        --namespace ${K8S_NAMESPACE} \
+        ${CI_PROJECT_NAME} ./helm/charts/${CI_PROJECT_NAME} \
+        --set image.repository=${CI_REGISTRY_IMAGE} \
+        --set image.tag=${DOCKER_IMAGE_TAG} \
+        --set def.environment=${CI_ENVIRONMENT_NAME} \
+        --values ./helm/charts/${CI_PROJECT_NAME}/values-${env_name_short}.yaml \
+        --values ./secrets.yaml \
+        --timeout 5m \
+        --atomic"
+    - echo $command
+    - eval $command
+
+deploy_to_sandbox:
+  extends: .default_deploy
+  environment:
+    name: sandbox
+  variables:
+    K8S_CONFIG_FILE: "SANDBOX_K8S_CONFIG_FILE"
+    K8S_NAMESPACE: ${CI_ENVIRONMENT_NAME}
+    get_parameters_config: "aws_get_parameters_config"
+    get_parameters_creds: "aws_get_parameters_creds"
+    env_name_short: ${CI_ENVIRONMENT_NAME}
+  when: manual
+  tags:
+    - sandbox
+
+deploy_to_testing:
+  extends: .default_deploy
+  environment:
+    name: testing
+  variables:
+    K8S_CONFIG_FILE: "SANDBOX_K8S_CONFIG_FILE"
+    K8S_NAMESPACE: ${CI_ENVIRONMENT_NAME}
+    get_parameters_config: "aws_get_parameters_config"
+    get_parameters_creds: "aws_get_parameters_creds"
+    env_name_short: ${CI_ENVIRONMENT_NAME}
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+    - when: manual
+  tags:
+    - sandbox
+
+deploy_to_staging:
+  extends: .default_deploy
+  environment:
+    name: staging
+  variables:
+    K8S_CONFIG_FILE: "AWS_K8S_CONFIG_FILE"
+    K8S_NAMESPACE: ${CI_ENVIRONMENT_NAME}
+    get_parameters_config: "aws_get_parameters_config"
+    get_parameters_creds: "aws_get_parameters_creds"
+    env_name_short: "staging"
+  rules:
+    - if: '$CI_COMMIT_BRANCH =~ /release\/.*/'
+    - if: '$CI_COMMIT_BRANCH !~ /(master|main|develop)/'
+      when: manual
+
+deploy_to_production:
+  extends: .default_deploy
+  environment:
+    name: production
+  variables:
+    K8S_CONFIG_FILE: "AWS_PRODUCTION_K8S_CONFIG_FILE"
+    K8S_NAMESPACE: ${CI_ENVIRONMENT_NAME}
+    get_parameters_config: "aws_get_parameters_config"
+    get_parameters_creds: "aws_get_parameters_creds"
+    env_name_short: ${CI_ENVIRONMENT_NAME}
+  when: manual
+  only:
+    - /release\/.*/
+    - main
+    - master
+    - /hotfix\/.*/
+  tags:
+    - production

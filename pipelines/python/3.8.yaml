@@ -1,0 +1,24 @@
+include:
+  - local: '/templates/python/3.8.yaml'
+  - local: '/templates/build_docker/default.yaml'
+  - local: '/templates/deploy/deploy_default.yaml'
+
+stages:
+  - build
+  # - test
+  - build_docker
+  - deploy
+
+build:
+  extends: .build3.8
+
+# test:
+#   extends: .test16
+#   except:
+#     variables:
+#       - $SKIP_TESTS != "false"
+
+build_docker:
+  extends: .default_build_docker
+
+# deploy is there /templates/deploy/deploy_default.yaml

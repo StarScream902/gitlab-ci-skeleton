@@ -1,0 +1,19 @@
+---
+.ansible:
+  stage: deploy
+  image:
+    name: my-custom-docker-image:ansible-1.2.3
+    entrypoint: [ "" ]
+  allow_failure: false
+  variables:
+    ANSIBLE_USER_PRIVATE_KEY: "ANSIBLE_USER_PRIVATE_KEY"
+    ANSIBLE_VAULT_PASS: "ANSIBLE_VAULT_PASS"
+  before_script:
+    - eval $(ssh-agent -s) # preparing ssh for connection
+    - mkdir ~/.ssh
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+    - ssh-add <(echo "$ANSIBLE_USER_PRIVATE_KEY")
+    - mkdir ~/.ansible # preparing ansible for work
+    - echo $ANSIBLE_VAULT_PASS > ~/.ansible/vault_password
+    - git clone --branch=${DEFAULT_ANSIBLE_REPO_REF} https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/my-ansible-repo.git ./ansible
+    - cd ./ansible

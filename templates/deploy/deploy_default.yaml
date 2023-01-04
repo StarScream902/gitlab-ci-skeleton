@@ -2,36 +2,11 @@
 # for finding:
 # K8S_CONFIG_FILE and K8S_SECRETS_FILE
 # see there https://gitlab.com/groups/you_group/-/settings/ci_cd
-
-.default_deploy:
-  stage: deploy
-  image:
-    name: my-custom-docker-image:main-3838ba26 # with python, boto3 and enother stuff for the getting secrets from the aws parameter store
-    entrypoint: [ "" ]
-  allow_failure: false
-  needs: ["build_docker"]
-  before_script:
-    - cp $PWD.tmp/${get_parameters_creds} ~/.aws/credentials
-    - git clone --branch=${DEFAULT_CHARTS_REPO_REF} https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/repo-of-my-helm-charts.git ./helm
-    - AWS_PROFILE=aws_get_param python3 ./helm/get-parameters.py /${env_name_short}/${CI_PROJECT_NAME}
-  script:
-    - |
-      command="helm upgrade --install \
-        --kubeconfig $PWD.tmp/${K8S_CONFIG_FILE} \
-        --namespace ${K8S_NAMESPACE} \
-        ${CI_PROJECT_NAME} ./helm/charts/${CI_PROJECT_NAME} \
-        --set image.repository=${CI_REGISTRY_IMAGE} \
-        --set image.tag=${DOCKER_IMAGE_TAG} \
-        --set def.environment=${CI_ENVIRONMENT_NAME} \
-        --values ./helm/charts/${CI_PROJECT_NAME}/values-${env_name_short}.yaml \
-        --values ./secrets.yaml \
-        --timeout 5m \
-        --atomic"
-    - echo $command
-    - eval $command
+include:
+  - local: '/templates/deploy/helm.yaml'
 
 deploy_to_sandbox:
-  extends: .default_deploy
+  extends: .helm_deploy
   environment:
     name: sandbox
   variables:
@@ -45,7 +20,7 @@ deploy_to_sandbox:
     - sandbox
 
 deploy_to_testing:
-  extends: .default_deploy
+  extends: .helm_deploy
   environment:
     name: testing
   variables:
@@ -61,7 +36,7 @@ deploy_to_testing:
     - sandbox
 
 deploy_to_staging:
-  extends: .default_deploy
+  extends: .helm_deploy
   environment:
     name: staging
   variables:
@@ -76,7 +51,7 @@ deploy_to_staging:
       when: manual
 
 deploy_to_production:
-  extends: .default_deploy
+  extends: .helm_deploy
   environment:
     name: production
   variables:

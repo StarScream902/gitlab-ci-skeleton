@@ -6,6 +6,12 @@ include:
   - local: '/templates/java/17.yaml'
   - local: '/templates/build_docker/default.yaml'
   - local: '/templates/deploy/deploy_default.yaml'
+    rules:
+      - if: $CI_PROJECT_NAME == "java-17-app-1"
+      - if: $CI_PROJECT_NAME == "java-17-app-2"
+  - local: '/templates/deploy/java_default.yaml'
+    rules:
+      - if: $CI_PROJECT_NAME == "java-17-app-3"
 
 stages:
   - build

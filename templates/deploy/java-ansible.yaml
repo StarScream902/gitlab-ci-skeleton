@@ -1,0 +1,12 @@
+---
+include:
+  - local: '/templates/deploy/ansible.yaml'
+
+deploy java_ansible:
+  extends: .ansible
+  needs: ["upload-artifact"]
+  when: manual
+  script:
+    - ansible-playbook playbooks/java_deploy.yaml -i envs/dev/inventory.ini --user ansible-user -e service_name=${CI_PROJECT_NAME} -e service_version=${CI_COMMIT_SHORT_SHA}
+  tags:
+    - sandbox
